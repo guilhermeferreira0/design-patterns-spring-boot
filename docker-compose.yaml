@@ -1,0 +1,44 @@
+services:
+  database:
+    image: postgres:9-alpine
+    container_name: postgres-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: users
+    ports:
+      - 5432:5432
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-U", "postgres" ]
+      interval: 30s
+      retries: 5
+      start_period: 10s
+      timeout: 5s
+
+  spring-api:
+    build: 
+      context: .
+      dockerfile: ./server/docker/Dockerfile
+    container_name: java-api
+    environment:
+      POSTGRES_HOST: database
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: users
+    ports:
+      - 8080:8080
+    depends_on:
+      database:
+        condition: service_healthy
+  
+  web: 
+    build: 
+      context: .
+      dockerfile: ./web/Dockerfile
+    container_name: web
+    environment:
+      - VITE_API_URL=http://spring-api:8080
+    ports:
+      - 5173:5173
+    depends_on:
+      - spring-api
